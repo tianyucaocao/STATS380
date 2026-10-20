@@ -351,3 +351,134 @@ plotGrowths <- function(sector_name, startYear = 1987, endYear = 2026) {
          bg     = "white",
          cex    = 0.85)
 }
+plotSectors <- function(sectors, startYear = 1987, endYear = 2026) {
+  if (is.numeric(sectors)) {
+    if (any(!is.finite(sectors)) ||
+        any(sectors != floor(sectors)) ||
+        any(sectors < 1) || any(sectors > nlevels(gdp$sector))) {
+      stop("numeric sector indices must be valid finite integers")
+    }
+    sectors <- levels(gdp$sector)[sectors]
+  } else if (is.character(sectors)) {
+    if (!all(sectors %in% levels(gdp$sector))) {
+      bad <- sectors[!sectors %in% levels(gdp$sector)]
+      stop("unknown sector(s): ", paste(bad, collapse = ", "))
+    }
+  } else {
+    stop("sectors must be a character or numeric vector")
+  }
+
+  old_par <- par(no.readonly = TRUE)
+  on.exit(par(old_par), add = TRUE)
+  par(mfrow = n2mfrow(length(sectors)))
+
+  for (s in sectors) {
+    plotGrowths(s, startYear, endYear)
+  }
+  invisible(NULL)
+}
+
+# Demonstration
+plotSectors(1:10, 1987, 2026)
+
+
+plotGrowths <- function(sector_name, startYear = 1987, endYear = 2026,
+                        col = c("steelblue", "darkorange")) {
+  if (!is.character(col) || length(col) != 2) {
+    stop("col must be a character vector of length 2")
+  }
+
+  g <- getGrowths(sector_name, startYear, endYear)
+
+  qs    <- as.character(g$quarter)
+  years <- as.integer(substr(qs, 1, 4))
+  qnum  <- as.integer(substr(qs, 6, 6))
+  x     <- years + (qnum - 1) / 4
+
+  y_range <- range(c(g$quarterlyRate, g$annualRate, -20, 20), na.rm = TRUE)
+  y_range <- y_range + c(-2, 2)
+  x_range <- range(years) + c(-0.5, 0.5)
+
+  par(mar = c(4, 4, 3, 1))
+  plot.new()
+  plot.window(xlim = x_range, ylim = y_range)
+
+  abline(h = seq(-20, 20, by = 5), col = "grey80", lty = 3)
+  abline(h = 0, col = "grey30")
+
+  w <- 0.25 * 0.7
+  rect(xleft   = x - w / 2,
+       ybottom = 0,
+       xright  = x + w / 2,
+       ytop    = g$quarterlyRate,
+       col     = col[1],
+       border  = col[1])
+
+  lines(x, g$annualRate, col = col[2], lwd = 2)
+  points(x, g$annualRate, col = col[2], pch = 19)
+
+  axis(1, at = sort(unique(years)), labels = sort(unique(years)),
+       cex.axis = 0.85)
+  axis(2)
+  mtext("Year",           side = 1, line = 2.5)
+  mtext("Growth rate (%)", side = 2, line = 2.5)
+
+  sector_label <- if (is.numeric(sector_name)) levels(gdp$sector)[sector_name]
+                  else sector_name
+  title(main = sector_label)
+
+  legend("topright",
+         legend = c("Quarterly", "Annual"),
+         col    = col,
+         pch    = c(15, 19),
+         lty    = c(NA, 1),
+         lwd    = c(1, 2),
+         bty    = "o",
+         bg     = "white",
+         cex    = 0.85)
+}
+```
+
+## 2. Modified `plotSectors()`
+
+```{r plotSectors-modified}
+plotSectors <- function(
+    sectors = c("Total", "Primary industries",
+                "Goods producing industries", "Services industries"),
+    startYear = 1987, endYear = 2026,
+    col       = c("steelblue", "darkorange"),
+    layout    = c("row", "col")) {
+
+  layout <- match.arg(layout)
+
+  if (!is.character(col) || length(col) != 2) {
+    stop("col must be a character vector of length 2")
+  }
+
+  if (is.numeric(sectors)) {
+    if (any(!is.finite(sectors)) ||
+        any(sectors != floor(sectors)) ||
+        any(sectors < 1) || any(sectors > nlevels(gdp$sector))) {
+      stop("numeric sector indices must be valid finite integers")
+    }
+    sectors <- levels(gdp$sector)[sectors]
+  } else if (is.character(sectors)) {
+    if (!all(sectors %in% levels(gdp$sector))) {
+      bad <- sectors[!sectors %in% levels(gdp$sector)]
+      stop("unknown sector(s): ", paste(bad, collapse = ", "))
+    }
+  } else {
+    stop("sectors must be a character or numeric vector")
+  }
+
+  old_par <- par(no.readonly = TRUE)
+  on.exit(par(old_par), add = TRUE)
+
+  grid <- n2mfrow(length(sectors))
+  if (layout == "row") par(mfrow = grid) else par(mfcol = grid)
+
+  for (s in sectors) {
+    plotGrowths(s, startYear, endYear, col = col)
+  }
+  invisible(NULL)
+}
