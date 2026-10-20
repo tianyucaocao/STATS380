@@ -291,3 +291,63 @@ getGrowth <- function(df, sector_name, startYear = 1987, endYear = 2026) {
   rownames(growth) <- NULL
   growth
 }
+
+plotGrowths <- function(sector_name, startYear = 1987, endYear = 2026) {
+  # ---- data ---------------------------------------------------------
+  g <- getGrowths(sector_name, startYear, endYear)
+
+  # Parse "YYYYQn" into (year, quarter) and use a fractional-year x-axis
+  qs    <- as.character(g$quarter)
+  years <- as.integer(substr(qs, 1, 4))
+  qnum  <- as.integer(substr(qs, 6, 6))
+  x     <- years + (qnum - 1) / 4
+
+  # ---- ranges -------------------------------------------------------
+  y_range <- range(c(g$quarterlyRate, g$annualRate, -20, 20), na.rm = TRUE)
+  y_range <- y_range + c(-2, 2)
+  x_range <- range(years) + c(-0.5, 0.5)
+
+  # ---- set up plot step by step -------------------------------------
+  par(mar = c(4, 4, 3, 1))
+  plot.new()
+  plot.window(xlim = x_range, ylim = y_range)
+
+  # ---- horizontal grid lines at -20, -15, ..., 20 -------------------
+  abline(h = seq(-20, 20, by = 5), col = "grey80", lty = 3)
+  abline(h = 0, col = "grey30")
+
+  # ---- quarterly growth rates: bars (single rect() call) ------------
+  w <- 0.18
+  rect(xleft   = x - w / 2,
+       ybottom = 0,
+       xright  = x + w / 2,
+       ytop    = g$quarterlyRate,
+       col     = "blue",
+       border  = "blue")
+
+  # ---- annual growth rate curve -------------------------------------
+  lines(x, g$annualRate, col = "red", lwd = 2.5)
+  points(x, g$annualRate, col = "red", pch = 19)
+
+  # ---- axes, labels, title ------------------------------------------
+  axis(1, at = sort(unique(years)), labels = sort(unique(years)),
+       cex.axis = 0.85)
+  axis(2)
+  mtext("Year",           side = 1, line = 2.5)
+  mtext("Growth rate (%)", side = 2, line = 2.5)
+
+  sector_label <- if (is.numeric(sector_name)) levels(gdp$sector)[sector_name]
+                  else sector_name
+  title(main = sector_label)
+
+  #  legend (top-right)
+  legend("topright",
+         legend = c("Quarterly", "Annual"),
+         col    = c("blue", "red"),
+         pch    = c(15, 19),
+         lty    = c(NA, 1),
+         lwd    = c(1, 2),
+         bty    = "o",
+         bg     = "white",
+         cex    = 0.85)
+}
